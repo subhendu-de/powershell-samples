@@ -11,20 +11,36 @@ param (
     $ContainerName
 )
 
+$SummaryData = @{}
+$MaxCount = 1000
+$Total = 0
+$Token = $null
+[System.Collections.ArrayList]$BlobList = @()
+
 $Context = New-AzStorageContext -StorageAccountName $StorageAccountName -StorageAccountKey $StorageAccountKey
 
-$Blobs = Get-AzStorageBlob -Container $ContainerName -Context $Context
-$SummaryData = New-Object System.Collections.Generic.List[System.Object]
-
-foreach ($Blob in $Blobs)
+do 
 {
-    $StartIndex = $Blob.Name.LastIndexOf("/") + 1
-    $NumberOfChars = $Blob.Name.Length - $Blob.Name.LastIndexOf("/") - 1
-    $FolderName = $Blob.Name.Substring(0, $StartIndex - 1)
-    $BlobName = $Blob.Name.Substring($StartIndex, $NumberOfChars)
-    #Write-Output $FolderName $BlobName
+    $Blobs = Get-AzStorageBlob -Context $Context -Container $ContainerName -MaxCount $MaxCount -ContinuationToken $Token
+    $BlobList.AddRange($Blobs)
+    $Total += $Blobs.Count
+    $Token = $Blobs[$Blobs.Count - 1].ContinuationToken    
+    Write-Output "Get 1000 recs"
+} 
+while ($Token -ne $null)
 
-    $SummaryData.Add($FolderName)  
-}
+$BlobList
+#foreach ($Blob in $Blobs)
+#{
+#    Write-Host $Blob.Name
+#    $StartIndex = $Blob.Name.LastIndexOf("/") + 1
+#    $NumberOfChars = $Blob.Name.Length - $Blob.Name.LastIndexOf("/") - 1
+#    $FolderName = $Blob.Name.Substring(0, $StartIndex - 1)
+#    $BlobName = $Blob.Name.Substring($StartIndex, $NumberOfChars)
 
-$SummaryData | Group-Object -NoElement | Select-Object Name, Count  | Sort-Object Count -Descending
+#    $SummaryData.Add($FolderName, $BlobName)  
+#}
+
+#$SummaryData | Group-Object Name -NoElement | Select-Object Name, Count
+
+#Import-Csv C:\File.csv | Group-Object "location" | %{Set-Variable ($_.Name) ($_.Group | Select-Object -ExpandProperty id)}
